@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,7 +8,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
-const DATA_DIR = path.join(ROOT, "data");
+
+// Data lives in a standard per-user location by default:
+//   - BILLING_TIMER_DATA_DIR, if set (the macOS app passes this)
+//   - ~/Library/Application Support/Billing Timer on macOS
+//   - ./data elsewhere (e.g. plain `npm run dev`)
+function defaultDataDir() {
+  if (process.env.BILLING_TIMER_DATA_DIR) {
+    return process.env.BILLING_TIMER_DATA_DIR;
+  }
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Application Support", "Billing Timer");
+  }
+  return path.join(ROOT, "data");
+}
+
+const DATA_DIR = defaultDataDir();
 const LOG_NAME = process.env.LOG_FILE || "timesheet.log";
 const LOG_FILE = path.join(DATA_DIR, LOG_NAME);
 const STATE_FILE = path.join(DATA_DIR, "state.json");

@@ -38,51 +38,67 @@ npm run serve
 
 Then open http://localhost:3001.
 
-## Run automatically at login (macOS)
+## Install as a macOS app
 
-A LaunchAgent can run the server in the background and start it whenever you
-log in (and restart it if it crashes).
-
-Install it:
+Install a self-contained `Billing Timer.app` into `~/Applications`:
 
 ```sh
-./scripts/install-launchagent.sh
+./scripts/install.sh
 ```
 
-This detects your Node path and project location, writes
-`~/Library/LaunchAgents/com.globalcrowley.billing-timer.plist`, and starts the
-server at http://localhost:3001. It's safe to re-run (it reinstalls).
+The installer builds the UI, bundles the server and its production
+dependencies inside the app, compiles a small native wrapper window, applies a
+custom stopwatch icon, and migrates any existing `data/` into the standard data
+directory. Open it from Finder/Spotlight or pin it to the Dock.
+
+The app is self-managing:
+
+- It **starts the backend automatically** when you open it.
+- It **stops the backend automatically** when you quit it.
+- If something is already serving port 3001, it just connects to that.
+
+It does require Node to be installed (the installer records the Node path to
+use). Re-run `./scripts/install.sh` any time you change the code.
 
 Uninstall it:
 
 ```sh
-./scripts/uninstall-launchagent.sh
+./scripts/uninstall.sh           # remove the app, keep your data
+./scripts/uninstall.sh --purge   # also delete the data directory
 ```
 
-Other useful commands:
+### Icon
+
+The icon master is `macos/icon.png`. To regenerate it from the source art
+(`macos/icon-source.png`) — e.g. after replacing the artwork — run:
 
 ```sh
-# Restart after changing code (rebuild first if you changed the UI)
-npm run build
-launchctl kickstart -k gui/$(id -u)/com.globalcrowley.billing-timer
+python3 scripts/make-icon.py
 ```
-
-Server output is logged to `data/server.log` and `data/server.err.log`.
 
 ## Where the data lives
 
-- Human-readable log: `data/timesheet.log`
-- Source-of-truth state: `data/state.json`
-- Registered projects: `data/projects.json`
+On macOS, data is stored in the standard per-user location (used by both the
+installed app and plain `npm run serve`):
 
-The `data/` directory is git-ignored so your hours stay private.
+```
+~/Library/Application Support/Billing Timer/
+```
 
-### Changing the log file name
+- Human-readable log: `timesheet.log`
+- Source-of-truth state: `state.json`
+- Registered projects: `projects.json`
 
-Set the `LOG_FILE` environment variable:
+On other platforms (or when overridden), it falls back to a local `data/`
+directory in the project, which is git-ignored.
+
+### Overriding the data location
+
+Set `BILLING_TIMER_DATA_DIR` to choose where data is stored, or `LOG_FILE` to
+change just the log file name:
 
 ```sh
-LOG_FILE=acme-corp.log npm run dev
+BILLING_TIMER_DATA_DIR=~/Desktop/timer-data LOG_FILE=acme-corp.log npm run serve
 ```
 
 ## Log format
