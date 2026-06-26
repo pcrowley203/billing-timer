@@ -11,8 +11,15 @@ Everything is written to a plain-text log file you can read or hand to a client.
 
 - **Frontend:** Vite + React + TypeScript
 - **Backend:** Express (reads/writes the log file)
+- **macOS app:** Swift + WKWebView wrapper that starts/stops the backend
 
-## Setup
+## Requirements
+
+- Node.js and npm
+- macOS app install: Apple Command Line Tools (`swiftc`)
+- Icon regeneration only: Python with Pillow (`PIL`)
+
+## Development Setup
 
 ```sh
 npm install
@@ -58,7 +65,8 @@ The app is self-managing:
 - If something is already serving port 3001, it just connects to that.
 
 It does require Node to be installed (the installer records the Node path to
-use). Re-run `./scripts/install.sh` any time you change the code.
+use), plus Apple Command Line Tools so it can compile the Swift wrapper. Re-run
+`./scripts/install.sh` any time you change the code.
 
 Uninstall it:
 
@@ -69,10 +77,12 @@ Uninstall it:
 
 ### Icon
 
-The icon master is `macos/icon.png`. To regenerate it from the source art
-(`macos/icon-source.png`) — e.g. after replacing the artwork — run:
+The installer uses the checked-in icon master at `macos/icon.png`. To
+regenerate it from the source art (`macos/icon-source.png`) after replacing the
+artwork, install Pillow and run:
 
 ```sh
+python3 -m pip install Pillow
 python3 scripts/make-icon.py
 ```
 
