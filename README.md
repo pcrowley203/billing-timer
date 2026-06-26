@@ -40,24 +40,28 @@ Then open http://localhost:3001.
 
 ## Run automatically at login (macOS)
 
-A LaunchAgent runs the server in the background and starts it whenever you log
-in (and restarts it if it crashes). It's installed at:
+A LaunchAgent can run the server in the background and start it whenever you
+log in (and restart it if it crashes).
 
-```
-~/Library/LaunchAgents/com.globalcrowley.billing-timer.plist
-```
-
-It runs `scripts/start-server.sh`, which serves the app at http://localhost:3001.
-
-Useful commands:
+Install it:
 
 ```sh
-# Stop and disable autostart
-launchctl unload ~/Library/LaunchAgents/com.globalcrowley.billing-timer.plist
+./scripts/install-launchagent.sh
+```
 
-# Start / re-enable autostart
-launchctl load ~/Library/LaunchAgents/com.globalcrowley.billing-timer.plist
+This detects your Node path and project location, writes
+`~/Library/LaunchAgents/com.globalcrowley.billing-timer.plist`, and starts the
+server at http://localhost:3001. It's safe to re-run (it reinstalls).
 
+Uninstall it:
+
+```sh
+./scripts/uninstall-launchagent.sh
+```
+
+Other useful commands:
+
+```sh
 # Restart after changing code (rebuild first if you changed the UI)
 npm run build
 launchctl kickstart -k gui/$(id -u)/com.globalcrowley.billing-timer
