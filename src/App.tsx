@@ -23,6 +23,45 @@ function formatElapsed(ms: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+function localDateKey(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function liveTotals(
+  status: Status | null,
+  running: boolean,
+  startTime: string | null,
+  liveElapsedMs: number
+): { sessionHours: number; todayHours: number; totalHours: number } {
+  const liveSessionHours = liveElapsedMs / 3_600_000;
+  const serverSession = status?.currentSessionHours ?? 0;
+
+  if (!running || !startTime) {
+    return {
+      sessionHours: status?.currentSessionHours ?? 0,
+      todayHours: status?.todayHours ?? 0,
+      totalHours: status?.totalHours ?? 0,
+    };
+  }
+
+  const sessionStartedToday =
+    localDateKey(startTime) === localDateKey(new Date().toISOString());
+  const todayHours =
+    (status?.todayHours ?? 0) +
+    (sessionStartedToday ? liveSessionHours - serverSession : 0);
+  const totalHours = (status?.totalHours ?? 0) - serverSession + liveSessionHours;
+
+  return {
+    sessionHours: liveSessionHours,
+    todayHours,
+    totalHours,
+  };
+}
+
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [projects, setProjects] = useState<string[]>([]);
@@ -126,6 +165,8 @@ export default function App() {
   }
   void tick;
 
+  const totals = liveTotals(status, running, startRef.current, liveElapsedMs);
+
   const canStart = !busy && !running && selectedProject !== "";
 
   return (
@@ -215,21 +256,15 @@ export default function App() {
           <div className="totals">
             <div className="stat">
               <div className="label">This session</div>
-              <div className="value">
-                {(running
-                  ? liveElapsedMs / 3_600_000
-                  : status?.currentSessionHours ?? 0
-                ).toFixed(2)}
-                h
-              </div>
+              <div className="value">{totals.sessionHours.toFixed(2)}h</div>
             </div>
             <div className="stat">
               <div className="label">Today ({displayProject})</div>
-              <div className="value">{(status?.todayHours ?? 0).toFixed(2)}h</div>
+              <div className="value">{totals.todayHours.toFixed(2)}h</div>
             </div>
             <div className="stat">
               <div className="label">All time ({displayProject})</div>
-              <div className="value">{(status?.totalHours ?? 0).toFixed(2)}h</div>
+              <div className="value">{totals.totalHours.toFixed(2)}h</div>
             </div>
           </div>
         )}
