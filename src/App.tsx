@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 
 type Status = {
@@ -71,8 +71,11 @@ export default function App() {
   const [error, setError] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
+  const [adjustMinutes, setAdjustMinutes] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
   const startRef = useRef<string | null>(null);
   const activeProjectRef = useRef<string | null>(null);
+  const adjustDialogRef = useRef<HTMLDialogElement>(null);
 
   const refresh = useCallback(async (project?: string) => {
     try {
@@ -156,6 +159,49 @@ export default function App() {
     [refresh, selectedProject]
   );
 
+  const openAdjust = useCallback(() => {
+    setAdjustMinutes("");
+    setAdjustNote("");
+    setError("");
+    adjustDialogRef.current?.showModal();
+  }, []);
+
+  const submitAdjust = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      const raw = adjustMinutes.trim();
+      const minutes = raw === "" ? 0 : Number(raw);
+      if (!Number.isInteger(minutes)) {
+        setError("Minutes must be an integer.");
+        return;
+      }
+      setBusy(true);
+      try {
+        const res = await fetch("/api/adjust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project: selectedProject,
+            minutes,
+            note: adjustNote.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error || "Failed to adjust.");
+          return;
+        }
+        adjustDialogRef.current?.close();
+        await refresh(selectedProject || undefined);
+      } catch {
+        setError("Could not reach the server. Is it running?");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [adjustMinutes, adjustNote, refresh, selectedProject]
+  );
+
   const running = status?.running ?? false;
   const displayProject = running ? activeProjectRef.current : selectedProject;
 
@@ -168,6 +214,7 @@ export default function App() {
   const totals = liveTotals(status, running, startRef.current, liveElapsedMs);
 
   const canStart = !busy && !running && selectedProject !== "";
+  const canAdjust = canStart;
 
   return (
     <div className="app">
@@ -250,7 +297,55 @@ export default function App() {
           >
             Stop
           </button>
+          <button
+            className="adjust"
+            onClick={openAdjust}
+            disabled={!canAdjust}
+          >
+            Adjust
+          </button>
         </div>
+
+        <dialog ref={adjustDialogRef} className="adjustDialog">
+          <form onSubmit={submitAdjust}>
+            <h2>Adjust</h2>
+            <label className="fieldLabel" htmlFor="adjust-minutes">
+              Minutes
+            </label>
+            <input
+              id="adjust-minutes"
+              type="number"
+              step="1"
+              value={adjustMinutes}
+              onChange={(e) => setAdjustMinutes(e.target.value)}
+              disabled={busy}
+              autoFocus
+            />
+            <label className="fieldLabel" htmlFor="adjust-note">
+              Annotation
+            </label>
+            <input
+              id="adjust-note"
+              type="text"
+              value={adjustNote}
+              onChange={(e) => setAdjustNote(e.target.value)}
+              disabled={busy}
+            />
+            <div className="dialogButtons">
+              <button
+                type="button"
+                className="dialogCancel"
+                onClick={() => adjustDialogRef.current?.close()}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="adjust" disabled={busy}>
+                OK
+              </button>
+            </div>
+          </form>
+        </dialog>
 
         {displayProject && (
           <div className="totals">

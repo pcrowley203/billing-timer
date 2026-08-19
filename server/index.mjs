@@ -107,6 +107,18 @@ function sessionProject(s) {
   return s.project || "Unknown";
 }
 
+function isAdjust(s) {
+  return s.kind === "adjust";
+}
+
+function eventTime(s) {
+  return isAdjust(s) ? s.at : s.start;
+}
+
+function fmtSignedInt(n) {
+  return n > 0 ? `+${n}` : String(n);
+}
+
 function completedHoursForProject(project) {
   return state.sessions
     .filter((s) => sessionProject(s) === project)
@@ -115,7 +127,7 @@ function completedHoursForProject(project) {
 
 function completedHoursForProjectDay(project, dayKey) {
   return state.sessions
-    .filter((s) => sessionProject(s) === project && localDateKey(s.start) === dayKey)
+    .filter((s) => sessionProject(s) === project && localDateKey(eventTime(s)) === dayKey)
     .reduce((sum, s) => sum + s.hours, 0);
 }
 
@@ -155,6 +167,7 @@ function renderLogFile() {
   const lines = [];
   lines.push("# Billing Timer log");
   lines.push("# Each STOP records: session hours, day total, and all-time total (per project).");
+  lines.push("# Each ADJUST records: minutes, day total, and all-time total (per project).");
   lines.push("");
 
   const projectDayTotals = {};
@@ -162,7 +175,7 @@ function renderLogFile() {
 
   for (const s of state.sessions) {
     const project = sessionProject(s);
-    const dayKey = localDateKey(s.start);
+    const dayKey = localDateKey(eventTime(s));
 
     if (!projectDayTotals[project]) projectDayTotals[project] = {};
     projectDayTotals[project][dayKey] =
@@ -171,6 +184,18 @@ function renderLogFile() {
 
     const dayTotal = projectDayTotals[project][dayKey];
     const total = projectTotals[project];
+
+    if (isAdjust(s)) {
+      let line =
+        `${fmtTimestamp(s.at)}  ADJUST  ` +
+        `project=${project}  ` +
+        `minutes=${fmtSignedInt(s.minutes)}  ` +
+        `day=${round2(dayTotal).toFixed(2)}h  ` +
+        `total=${round2(total).toFixed(2)}h`;
+      if (s.note) line += `  note=${s.note}`;
+      lines.push(line);
+      continue;
+    }
 
     lines.push(`${fmtTimestamp(s.start)}  START  project=${project}`);
     lines.push(
@@ -268,6 +293,48 @@ app.post("/api/start", (req, res) => {
     activeProject: state.activeProject,
     project,
     ...computeTotals(project, now),
+  });
+});
+
+app.post("/api/adjust", (req, res) => {
+  if (state.running) {
+    return res.status(409).json({ error: "Stop the timer before adding a manual adjustment." });
+  }
+
+  const project = typeof req.body?.project === "string" ? req.body.project.trim() : "";
+  if (!project) {
+    return res.status(400).json({ error: "Select a project before adjusting." });
+  }
+  if (!projects.includes(project)) {
+    return res.status(400).json({ error: "Unknown project." });
+  }
+
+  const minutes = req.body?.minutes === undefined || req.body?.minutes === null || req.body?.minutes === ""
+    ? 0
+    : Number(req.body.minutes);
+  if (!Number.isInteger(minutes)) {
+    return res.status(400).json({ error: "Minutes must be an integer." });
+  }
+
+  const note =
+    typeof req.body?.note === "string" ? req.body.note.replace(/\s+/g, " ").trim() : "";
+
+  const at = new Date().toISOString();
+  state.sessions.push({
+    kind: "adjust",
+    at,
+    minutes,
+    hours: minutes / 60,
+    project,
+    note,
+  });
+  saveState(state);
+  writeLogFile();
+
+  res.json({
+    ok: true,
+    project,
+    ...computeTotals(project, at),
   });
 });
 

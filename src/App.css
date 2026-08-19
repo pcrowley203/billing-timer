@@ -158,9 +158,56 @@ button:disabled {
   color: #4c0519;
 }
 
+.adjust {
+  background: linear-gradient(180deg, #38bdf8, #0284c7);
+  color: #082f49;
+}
+
 .start:not(:disabled):hover,
-.stop:not(:disabled):hover {
+.stop:not(:disabled):hover,
+.adjust:not(:disabled):hover {
   filter: brightness(1.08);
+}
+
+.adjustDialog {
+  width: min(420px, calc(100% - 32px));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 24px;
+  background: #1e293b;
+  color: #e2e8f0;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.adjustDialog::backdrop {
+  background: rgba(2, 6, 23, 0.65);
+}
+
+.adjustDialog h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+.adjustDialog input {
+  width: 100%;
+  font-size: 15px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+}
+
+.dialogButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.dialogCancel {
+  background: rgba(51, 65, 85, 0.9);
+  color: #e2e8f0;
 }
 
 .totals {
